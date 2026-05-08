@@ -23,7 +23,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const enableContributions =
   (process.env.ENABLE_CONTRIBUTIONS || 'true') === 'true';
 
-const mv3 = ['chrome'].includes(targetEnv);
+const mv3 = ['chrome', 'edge'].includes(targetEnv);
 
 const distDir = path.join(__dirname, 'dist', targetEnv);
 const zipName = 'video_quality_settings_for_youtube';
@@ -135,6 +135,22 @@ async function fonts(done) {
   });
 }
 
+async function polyfill(done) {
+  if (!['edge', 'firefox'].includes(targetEnv)) {
+    done();
+    return;
+  }
+
+  await new Promise(resolve => {
+    src('node_modules/webextension-polyfill/dist/browser-polyfill.js', {
+      encoding: false
+    })
+      .pipe(dest(distDir))
+      .on('error', done)
+      .on('finish', resolve);
+  });
+}
+
 async function locale(done) {
   const localesRootDir = path.join(__dirname, 'src/assets/locales');
   const localeDirs = readdirSync(localesRootDir).filter(function (file) {
@@ -241,7 +257,7 @@ function inspect(done) {
 
 exports.build = series(
   init,
-  parallel(js, html, images, fonts, locale, manifest, license)
+  parallel(js, html, images, fonts, polyfill, locale, manifest, license)
 );
 exports.zip = zip;
 exports.inspect = inspect;
