@@ -38,16 +38,48 @@ function mainContextScript(contextEventName) {
 
     for (const {player} of contentStorage.videos) {
       try {
-        const levels = player.getAvailableQualityLevels();
-        const qualityLevel =
-          levels.length && !levels.includes(quality) ? levels[0] : quality;
+      const levels = player.getAvailableQualityLevels();
+      let qualityLevel = quality;
 
-        player.setPlaybackQualityRange(qualityLevel, qualityLevel);
-      } catch (err) {
-        console.log('Could not set video quality:', err.message());
+      if (levels.length && !levels.includes(quality)) {
+        // Quality not available, find fallback
+        qualityLevel = findFallbackQuality(quality, levels);
       }
+
+      player.setPlaybackQualityRange(qualityLevel, qualityLevel);
+    } catch (err) {
+      console.log('Could not set video quality:', err.message());
     }
   }
+}
+
+function findFallbackQuality(preferredQuality, availableLevels) {
+  // Define quality hierarchy from highest to lowest
+  const qualityHierarchy = [
+    'highres', 'hd2160', 'hd1440', 'hd1080', 'hd720', 
+    'large', 'medium', 'small', 'tiny'
+  ];
+
+  const preferredIndex = qualityHierarchy.indexOf(preferredQuality);
+
+  // Find closest quality: try one step up, then one step down
+  // First try higher quality
+  for (let i = preferredIndex - 1; i >= 0; i--) {
+    if (availableLevels.includes(qualityHierarchy[i])) {
+      return qualityHierarchy[i]; // One step up
+    }
+  }
+
+  // Then try lower quality
+  for (let i = preferredIndex + 1; i < qualityHierarchy.length; i++) {
+    if (availableLevels.includes(qualityHierarchy[i])) {
+      return qualityHierarchy[i]; // One step down
+    }
+  }
+
+  // Fallback to first available if nothing else works
+  return availableLevels[0];
+}
 
   function limitVideoFps() {
     const isMediaTypeSupported = MediaSource.isTypeSupported;
